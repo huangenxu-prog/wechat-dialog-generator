@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { toCanvas } from 'html-to-image'
 import { Camera, ChevronRight, Download, MessageSquareText, Plus, QrCode, UserRound } from 'lucide-react'
 import { loadWechatScene, saveWechatScene, type WechatSceneKind, type WechatSceneProject } from '@/lib/project-store'
+import { saveCanvasAsImage, exportSuccessMessage } from '@/lib/image-export'
 import { WechatPhoneChrome } from '@/components/WechatPhoneChrome'
 
 interface FieldDefinition {
@@ -120,11 +121,8 @@ export function WechatSceneEditor({ kind, onToast, onBeforeExport, onExportSucce
     try {
       const canvas = await toCanvas(previewRef.current, { pixelRatio: 2, backgroundColor: '#f5f5f5' })
       if (onBeforeExport && !(await onBeforeExport())) return
-      const link = document.createElement('a')
-      link.download = `微信${definition.title}_${Date.now()}.png`
-      link.href = canvas.toDataURL('image/png')
-      link.click()
-      onToast('图片已下载')
+      const method = await saveCanvasAsImage(canvas, `微信${definition.title}_${Date.now()}.png`)
+      onToast(exportSuccessMessage(method))
       onExportSuccess?.()
     } catch {
       onToast('图片生成失败')

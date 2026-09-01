@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { toCanvas } from 'html-to-image'
 import { Camera, Download, Heart, ImagePlus, MapPin, MessageCircle, Plus, Trash2 } from 'lucide-react'
 import { loadMomentProject, saveMomentProject, type MomentProject } from '@/lib/project-store'
+import { saveCanvasAsImage, exportSuccessMessage } from '@/lib/image-export'
 import { WechatPhoneChrome } from '@/components/WechatPhoneChrome'
 
 const emptyMoment: MomentProject = {
@@ -128,11 +129,8 @@ export function MomentsEditor({ onToast, onBeforeExport, onExportSuccess }: Mome
         backgroundColor: '#ffffff',
       })
       if (onBeforeExport && !(await onBeforeExport())) return
-      const link = document.createElement('a')
-      link.download = `微信朋友圈_${Date.now()}.png`
-      link.href = canvas.toDataURL('image/png')
-      link.click()
-      onToast('朋友圈图片已下载')
+      const method = await saveCanvasAsImage(canvas, `微信朋友圈_${Date.now()}.png`)
+      onToast(exportSuccessMessage(method))
       onExportSuccess?.()
     } catch {
       onToast('朋友圈图片生成失败')

@@ -29,6 +29,7 @@ import {
   type WechatTool,
 } from '@/lib/product-analytics';
 import { createSameTemplateUrl, readSameTemplateHash } from '@/lib/share-link';
+import { saveCanvasAsImage, exportSuccessMessage } from '@/lib/image-export';
 import type { ChatUser, ChatMessage, PhoneSettings } from '@/types';
 
 const defaultSettings: PhoneSettings = {
@@ -577,16 +578,13 @@ function App() {
     try {
       const canvas = await capturePhone(false);
       if (!canvas) return;
-      const link = document.createElement('a');
-      link.download = '微信聊天记录_' + Date.now() + '.png';
-      link.href = canvas.toDataURL('image/png');
-      link.click();
+      const method = await saveCanvasAsImage(canvas, '微信聊天记录_' + Date.now() + '.png');
       void trackProductEvent('image_exported', {
         capture_mode: 'standard',
         message_count_bucket: messageCountBucket(messages.length),
         tool: 'chat',
       });
-      showToast('图片已生成并下载！');
+      showToast(exportSuccessMessage(method));
     } catch (e: unknown) {
       showToast('生成失败：' + (e instanceof Error ? e.message : String(e)));
     }
@@ -623,16 +621,13 @@ function App() {
     try {
       const canvas = await capturePhone(true);
       if (!canvas) return;
-      const link = document.createElement('a');
-      link.download = '微信聊天记录_长截图_' + Date.now() + '.png';
-      link.href = canvas.toDataURL('image/png');
-      link.click();
+      const method = await saveCanvasAsImage(canvas, '微信聊天记录_长截图_' + Date.now() + '.png');
       void trackProductEvent('image_exported', {
         capture_mode: 'long',
         message_count_bucket: messageCountBucket(messages.length),
         tool: 'chat',
       });
-      showToast('长截图已生成并下载！');
+      showToast(exportSuccessMessage(method));
     } catch (e: unknown) {
       showToast('生成失败：' + (e instanceof Error ? e.message : String(e)));
     }
