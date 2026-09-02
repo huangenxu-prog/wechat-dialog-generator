@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { domToCanvas } from 'modern-screenshot';
+import html2canvas from 'html2canvas';
 import { CircleDollarSign, Download, Copy, Gift, Image as ImageIcon, MessageSquare, Share2, ShieldCheck, Sparkles, UserRound, UsersRound, Zap } from 'lucide-react';
 import { ImportPanel } from '@/components/ImportPanel';
 import { UserAvatarManager } from '@/components/UserAvatarManager';
@@ -557,23 +557,16 @@ function App() {
 
     let canvas: HTMLCanvasElement | null = null;
     try {
-      const captureOptions = {
+      canvas = await html2canvas(phone, {
         width: 1125,
         height: totalH,
         scale: 1,
         backgroundColor: '#ededed',
-        debug: false,
-      };
-
-      // iOS/Safari 下 modern-screenshot 同样可能第一次把 img 跳过。
-      // 先做两次“预热截图”，让 SVG/Image/Canvas 链路完成一次真实渲染，
-      // 第三次再作为最终结果返回。
-      await domToCanvas(phone, captureOptions);
-      await new Promise(resolve => setTimeout(resolve, 150));
-      await domToCanvas(phone, captureOptions);
-      await new Promise(resolve => setTimeout(resolve, 150));
-
-      canvas = await domToCanvas(phone, captureOptions);
+        useCORS: true,
+        allowTaint: false,
+        imageTimeout: 15000,
+        logging: false,
+      });
     } finally {
       // 还原所有样式
       content.style.transform = saved.ct; content.style.transformOrigin = saved.co;
