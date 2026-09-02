@@ -557,13 +557,23 @@ function App() {
 
     let canvas: HTMLCanvasElement | null = null;
     try {
-      canvas = await domToCanvas(phone, {
+      const captureOptions = {
         width: 1125,
         height: totalH,
         scale: 1,
         backgroundColor: '#ededed',
         debug: false,
-      });
+      };
+
+      // iOS/Safari 下 modern-screenshot 同样可能第一次把 img 跳过。
+      // 先做两次“预热截图”，让 SVG/Image/Canvas 链路完成一次真实渲染，
+      // 第三次再作为最终结果返回。
+      await domToCanvas(phone, captureOptions);
+      await new Promise(resolve => setTimeout(resolve, 150));
+      await domToCanvas(phone, captureOptions);
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      canvas = await domToCanvas(phone, captureOptions);
     } finally {
       // 还原所有样式
       content.style.transform = saved.ct; content.style.transformOrigin = saved.co;
