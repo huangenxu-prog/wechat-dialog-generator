@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { toCanvas } from 'html-to-image';
+import { waitForImages } from '@/lib/image-normalize';
 import { CircleDollarSign, Download, Copy, Gift, Image as ImageIcon, MessageSquare, Share2, ShieldCheck, Sparkles, UserRound, UsersRound, Zap } from 'lucide-react';
 import { ImportPanel } from '@/components/ImportPanel';
 import { UserAvatarManager } from '@/components/UserAvatarManager';
@@ -11,84 +12,6 @@ import { ProjectPanel } from '@/components/ProjectPanel';
 import { MomentsEditor } from '@/components/MomentsEditor';
 import { WechatSceneEditor } from '@/components/WechatSceneEditor';
 import { parseChatRecord } from '@/lib/parser';
-
-
-async function stabilizeAvatarImagesForExport(node: HTMLElement): Promise<() => void> {
-  const avatarImages = Array.from(
-    node.querySelectorAll<HTMLImageElement>('.wc-face img')
-  );
-
-  const originals: Array<{ img: HTMLImageElement; src: string }> = [];
-
-  for (const img of avatarImages) {
-    const src = img.currentSrc || img.src;
-    if (!src) continue;
-
-    try {
-      if (!img.complete || img.naturalWidth === 0) {
-        await new Promise<void>((resolve) => {
-          const done = () => resolve();
-          img.addEventListener('load', done, { once: true });
-          img.addEventListener('error', done, { once: true });
-        });
-      }
-
-      const w = img.naturalWidth;
-      const h = img.naturalHeight;
-      if (!w || !h) continue;
-
-      const canvas = document.createElement('canvas');
-      canvas.width = w;
-      canvas.height = h;
-
-      const ctx = canvas.getContext('2d');
-      if (!ctx) continue;
-
-      ctx.drawImage(img, 0, 0, w, h);
-
-      const stableSrc = canvas.toDataURL('image/png');
-      if (!stableSrc) continue;
-
-      originals.push({ img, src });
-      img.src = stableSrc;
-
-      if (typeof img.decode === 'function') {
-        await img.decode().catch(() => undefined);
-      }
-    } catch {
-      // 单个头像失败不影响整张聊天记录导出
-    }
-  }
-
-  return () => {
-    for (const { img, src } of originals) {
-      img.src = src;
-    }
-  };
-}
-
-function waitForImagesReady(node: HTMLElement): Promise<void> {
-  const images = Array.from(node.querySelectorAll('img'));
-  return Promise.all(
-    images.map(async (img) => {
-      try {
-        if (!img.complete || img.naturalWidth === 0) {
-          await new Promise<void>((resolve) => {
-            const done = () => resolve();
-            img.addEventListener('load', done, { once: true });
-            img.addEventListener('error', done, { once: true });
-          });
-        }
-        if (typeof img.decode === 'function') {
-          await img.decode().catch(() => undefined);
-        }
-      } catch {
-        // 单张图片失败不阻断整体导出
-      }
-    }),
-  ).then(() => undefined);
-}
-
 import {
   activeProjectStorageKey,
   copyProject,
@@ -606,13 +529,10 @@ function App() {
       }
     }
 
-    // 等待浏览器重新布局
+    // 等待浏览器重新布局以及所有图片完成加载/解码。
+    // html-to-image 在 iOS Safari 上如果图片尚未完成解码，可能在最终 PNG 中出现空白。
     await new Promise(r => setTimeout(r, 50));
-    // iOS Safari 下自定义头像可能已经显示，但 html-to-image 克隆 DOM 时仍可能丢失头像。
-    // 导出前把头像重新栅格化成稳定的 Data URL，再交给 html-to-image。
-    await waitForImagesReady(phone);
-    const restoreAvatarImages = await stabilizeAvatarImagesForExport(phone);
-    await waitForImagesReady(phone);
+    await waitForImages(phone);
     const totalH = longshot ? phone.scrollHeight : 2436;
 
     let canvas: HTMLCanvasElement | null = null;
@@ -624,7 +544,6 @@ function App() {
         backgroundColor: '#ededed',
       });
     } finally {
-      restoreAvatarImages();
       // 还原所有样式
       content.style.transform = saved.ct; content.style.transformOrigin = saved.co;
       wrap.style.width = saved.ww; wrap.style.height = saved.wh;
