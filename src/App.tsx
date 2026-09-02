@@ -12,6 +12,61 @@ import { MomentsEditor } from '@/components/MomentsEditor';
 import { WechatSceneEditor } from '@/components/WechatSceneEditor';
 import { parseChatRecord } from '@/lib/parser';
 
+
+async function stabilizeAvatarImagesForExport(node: HTMLElement): Promise<() => void> {
+  const avatarImages = Array.from(
+    node.querySelectorAll<HTMLImageElement>('.wc-face img')
+  );
+
+  const originals: Array<{ img: HTMLImageElement; src: string }> = [];
+
+  for (const img of avatarImages) {
+    const src = img.currentSrc || img.src;
+    if (!src) continue;
+
+    try {
+      if (!img.complete || img.naturalWidth === 0) {
+        await new Promise<void>((resolve) => {
+          const done = () => resolve();
+          img.addEventListener('load', done, { once: true });
+          img.addEventListener('error', done, { once: true });
+        });
+      }
+
+      const w = img.naturalWidth;
+      const h = img.naturalHeight;
+      if (!w || !h) continue;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) continue;
+
+      ctx.drawImage(img, 0, 0, w, h);
+
+      const stableSrc = canvas.toDataURL('image/png');
+      if (!stableSrc) continue;
+
+      originals.push({ img, src });
+      img.src = stableSrc;
+
+      if (typeof img.decode === 'function') {
+        await img.decode().catch(() => undefined);
+      }
+    } catch {
+      // 单个头像失败不影响整张聊天记录导出
+    }
+  }
+
+  return () => {
+    for (const { img, src } of originals) {
+      img.src = src;
+    }
+  };
+}
+
 function waitForImagesReady(node: HTMLElement): Promise<void> {
   const images = Array.from(node.querySelectorAll('img'));
   return Promise.all(
@@ -553,7 +608,10 @@ function App() {
 
     // 等待浏览器重新布局
     await new Promise(r => setTimeout(r, 50));
-    // iOS Safari 下自定义头像可能已经显示，但尚未完成解码；导出前强制等待。
+    // iOS Safari 下自定义头像可能已经显示，但 html-to-image 克隆 DOM 时仍可能丢失头像。
+    // 导出前把头像重新栅格化成稳定的 Data URL，再交给 html-to-image。
+    await waitForImagesReady(phone);
+    const restoreAvatarImages = await stabilizeAvatarImagesForExport(phone);
     await waitForImagesReady(phone);
     const totalH = longshot ? phone.scrollHeight : 2436;
 
@@ -566,6 +624,7 @@ function App() {
         backgroundColor: '#ededed',
       });
     } finally {
+      restoreAvatarImages();
       // 还原所有样式
       content.style.transform = saved.ct; content.style.transformOrigin = saved.co;
       wrap.style.width = saved.ww; wrap.style.height = saved.wh;
@@ -716,7 +775,9 @@ function App() {
           <div className="intro-actions">
             <a className="btn btn-primary" href={activeTool === 'chat' ? '#editor' : activeTool === 'moments' ? '#moments-editor' : '#scene-editor'}><Zap size={16} /> 立即开始制作</a>
             {activeTool === 'chat' && <a className="btn btn-outline" href="#templates">浏览对话模板</a>}
-        
+            <button className="btn btn-outline" type="button" onClick={handleShare}>
+              <Share2 size={16} /> 分享工具
+            </button>
           </div>
         </div>
         <div className="intro-trust">
