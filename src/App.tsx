@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { toCanvas } from 'html-to-image';
+import { waitForImages } from '@/lib/image-normalize';
 import { CircleDollarSign, Download, Copy, Gift, Image as ImageIcon, MessageSquare, Share2, ShieldCheck, Sparkles, UserRound, UsersRound, Zap } from 'lucide-react';
 import { ImportPanel } from '@/components/ImportPanel';
 import { UserAvatarManager } from '@/components/UserAvatarManager';
@@ -528,8 +529,10 @@ function App() {
       }
     }
 
-    // 等待浏览器重新布局
+    // 等待浏览器重新布局以及所有图片完成加载/解码。
+    // html-to-image 在 iOS Safari 上如果图片尚未完成解码，可能在最终 PNG 中出现空白。
     await new Promise(r => setTimeout(r, 50));
+    await waitForImages(phone);
     const totalH = longshot ? phone.scrollHeight : 2436;
 
     let canvas: HTMLCanvasElement | null = null;
