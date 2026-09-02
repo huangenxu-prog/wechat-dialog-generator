@@ -1,6 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { toSvg } from 'html-to-image';
-import { waitForImages } from '@/lib/image-normalize';
+import { domToCanvas } from 'modern-screenshot';
 import { CircleDollarSign, Download, Copy, Gift, Image as ImageIcon, MessageSquare, Share2, ShieldCheck, Sparkles, UserRound, UsersRound, Zap } from 'lucide-react';
 import { ImportPanel } from '@/components/ImportPanel';
 import { UserAvatarManager } from '@/components/UserAvatarManager';
@@ -48,6 +47,27 @@ const defaultSettings: PhoneSettings = {
   backgroundColor: '#ededed',
   backgroundImage: null,
 };
+
+
+async function waitForImages(node: HTMLElement): Promise<void> {
+  const images = Array.from(node.querySelectorAll<HTMLImageElement>('img'));
+  await Promise.all(
+    images.map(async (img) => {
+      try {
+        if (!img.complete || img.naturalWidth === 0) {
+          await new Promise<void>((resolve) => {
+            const done = () => resolve();
+            img.addEventListener('load', done, { once: true });
+            img.addEventListener('error', done, { once: true });
+          });
+        }
+        if (typeof img.decode === 'function') {
+          await img.decode().catch(() => undefined);
+        }
+      } catch {}
+    })
+  );
+}
 
 function App() {
   const [activeTool, setActiveTool] = useState<WechatTool>(() => {
@@ -537,41 +557,13 @@ function App() {
 
     let canvas: HTMLCanvasElement | null = null;
     try {
-      // iOS Safari 对 html-to-image 内部“SVG -> Image -> Canvas”的时序存在已知问题：
-      // DOM 中图片明明正常，第一次绘制 SVG 到 Canvas 时仍可能漏掉图片。
-      // 这里拆开这一步，拿到 SVG 后主动等待图片完成渲染，再绘制到 Canvas。
-      const svgDataUrl = await toSvg(phone, {
+      canvas = await domToCanvas(phone, {
         width: 1125,
         height: totalH,
+        scale: 1,
         backgroundColor: '#ededed',
+        debug: false,
       });
-
-      const renderImage = new Image();
-      renderImage.decoding = 'async';
-
-      await new Promise<void>((resolve, reject) => {
-        renderImage.onload = () => resolve();
-        renderImage.onerror = () => reject(new Error('导出图片渲染失败'));
-        renderImage.src = svgDataUrl;
-      });
-
-      if (typeof renderImage.decode === 'function') {
-        await renderImage.decode().catch(() => undefined);
-      }
-
-      // Safari/WebKit 需要在 SVG Image 创建完成后再给一次实际绘制机会。
-      await new Promise(resolve => setTimeout(resolve, 700));
-
-      canvas = document.createElement('canvas');
-      canvas.width = 1125;
-      canvas.height = totalH;
-
-      const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error('无法创建导出画布');
-
-      ctx.fillStyle = '#ededed';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(renderImage, 0, 0, canvas.width, canvas.height);
     } finally {
       // 还原所有样式
       content.style.transform = saved.ct; content.style.transformOrigin = saved.co;
