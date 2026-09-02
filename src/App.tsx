@@ -396,6 +396,7 @@ function App() {
     const shareData = {
       title: '微信对话生成器',
       text: '在线制作微信聊天截图与长截图，无需登录即可使用，导出无限制，内容仅在浏览器本地处理。',
+      url: 'https://chat.laogao.xyz/',
     };
 
     try {
@@ -715,14 +716,14 @@ function App() {
           <div className="intro-actions">
             <a className="btn btn-primary" href={activeTool === 'chat' ? '#editor' : activeTool === 'moments' ? '#moments-editor' : '#scene-editor'}><Zap size={16} /> 立即开始制作</a>
             {activeTool === 'chat' && <a className="btn btn-outline" href="#templates">浏览对话模板</a>}
-           // <button className="btn btn-outline" type="button" onClick={handleShare}>
-            //  <Share2 size={16} /> 分享工具
-           // </button>
+            <button className="btn btn-outline" type="button" onClick={handleShare}>
+              <Share2 size={16} /> 分享工具
+            </button>
           </div>
         </div>
         <div className="intro-trust">
           <span><ShieldCheck size={18} /> 对话和头像仅在本地处理</span>
-         // <span>无弹窗广告</span>
+          <span>无弹窗广告</span>
           <span>导出无限制</span>
         </div>
       </section>
