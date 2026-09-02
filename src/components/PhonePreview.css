@@ -5,7 +5,7 @@
   flex-shrink: 0;
 }
 .wc-phone-wrap {
-  width: 365px;
+  width: 319px;
   height: 812px;
   overflow: hidden;
   border-radius: 44px;
@@ -18,7 +18,7 @@
   background: #1a1a1c;
 }
 .wc-phone-content {
-  transform: scale(0.33333333);
+  transform: scale(0.28333333);
   transform-origin: 0 0;
 }
 .wc-phone {
