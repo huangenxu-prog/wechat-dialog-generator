@@ -5,8 +5,8 @@
   flex-shrink: 0;
 }
 .wc-phone-wrap {
-  width: 319px;
-  height: 690px;
+  width: 345px;
+  height: 747px;
   overflow: hidden;
   border-radius: 44px;
   box-shadow:
@@ -18,7 +18,7 @@
   background: #1a1a1c;
 }
 .wc-phone-content {
-  transform: scale(0.28333333);
+  transform: scale(0.30666667);
   transform-origin: 0 0;
 }
 .wc-phone {
