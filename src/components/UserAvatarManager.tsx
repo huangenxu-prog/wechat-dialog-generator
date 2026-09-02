@@ -1,8 +1,53 @@
 import { useRef } from 'react';
 import { Users, Upload, X, UserCheck } from 'lucide-react';
 import { getDefaultAvatar } from '@/lib/parser';
-import { normalizeUploadedImage } from '@/lib/image-normalize';
 import type { ChatUser } from '@/types';
+
+function readFileAsDataUrl(file: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error ?? new Error('读取图片失败'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function decodeImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('图片解码失败'));
+    img.src = src;
+  });
+}
+
+async function normalizeAvatar(file: Blob): Promise<string> {
+  const original = await readFileAsDataUrl(file);
+  try {
+    const img = await decodeImage(original);
+    const w = img.naturalWidth;
+    const h = img.naturalHeight;
+    if (!w || !h) return original;
+
+    const maxSize = 512;
+    const scale = Math.min(1, maxSize / Math.max(w, h));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(w * scale));
+    canvas.height = Math.max(1, Math.round(h * scale));
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return original;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+    // 统一转成 PNG Data URL，避免 iOS Safari 对用户原始 JPEG/WebP/HEIC
+    // 在 html-to-image 的导出链路中出现空白。
+    return canvas.toDataURL('image/png');
+  } catch {
+    return original;
+  }
+}
+
 
 interface UserAvatarManagerProps {
   users: ChatUser[];
@@ -26,16 +71,12 @@ function AvatarCard({ user, index, isSelf, onUpdateAvatar, onRemoveAvatar, onSet
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
     try {
-      // 先在本地把用户头像规范化为体积可控、稳定的 data URL，
-      // 避免 iOS Safari + html-to-image 在导出阶段读取大图失败。
-      const dataUrl = await normalizeUploadedImage(file, {
-        maxSize: 512,
-        quality: 0.92,
-      });
+      const dataUrl = await normalizeAvatar(file);
       onUpdateAvatar(user.id, dataUrl);
     } catch {
-      // 规范化失败时回退到原始 data URL，确保用户头像不会丢失。
+      // 理论上 normalizeAvatar 已处理失败；这里保留最原始的读取兜底。
       const reader = new FileReader();
       reader.onload = (ev) => {
         const result = ev.target?.result;
