@@ -717,10 +717,7 @@ function App() {
           <p>{activeTool === 'chat' ? '支持单聊、群聊、图片、语音、红包和转账消息，可导出高清截图与完整长截图。' : activeTool === 'moments' ? '自由编辑头像、图文、位置、点赞与评论，实时预览并导出高清朋友圈图片。' : '支付、红包、个人资料与群信息页面统一编辑、本地保存，并导出带安全标识的高清模拟界面。'}</p>
           <div className="intro-actions">
             <a className="btn btn-primary" href={activeTool === 'chat' ? '#editor' : activeTool === 'moments' ? '#moments-editor' : '#scene-editor'}><Zap size={16} /> 立即开始制作</a>
-            {activeTool === 'chat' && <a className="btn btn-outline" href="#templates">浏览对话模板</a>}
-            <button className="btn btn-outline" type="button" onClick={handleShare}>
-              <Share2 size={16} /> 分享工具
-            </button>
+            {activeTool === 'chat' && <a className="btn btn-outline" href="#templates">浏览对话模板</
           </div>
         </div>
         <div className="intro-trust">
