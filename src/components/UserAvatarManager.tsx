@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { Users, Upload, X, UserCheck } from 'lucide-react';
 import { getDefaultAvatar } from '@/lib/parser';
+import { normalizeUploadedImage } from '@/lib/image-normalize';
 import type { ChatUser } from '@/types';
 
 interface UserAvatarManagerProps {
@@ -22,15 +23,28 @@ function AvatarCard({ user, index, isSelf, onUpdateAvatar, onRemoveAvatar, onSet
   const fileRef = useRef<HTMLInputElement>(null);
   const avatarSrc = user.avatar || getDefaultAvatar(index);
 
-  const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      onUpdateAvatar(user.id, ev.target?.result as string);
-    };
-    reader.readAsDataURL(file);
-    e.target.value = '';
+    try {
+      // 先在本地把用户头像规范化为体积可控、稳定的 data URL，
+      // 避免 iOS Safari + html-to-image 在导出阶段读取大图失败。
+      const dataUrl = await normalizeUploadedImage(file, {
+        maxSize: 512,
+        quality: 0.92,
+      });
+      onUpdateAvatar(user.id, dataUrl);
+    } catch {
+      // 规范化失败时回退到原始 data URL，确保用户头像不会丢失。
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const result = ev.target?.result;
+        if (typeof result === 'string') onUpdateAvatar(user.id, result);
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      e.target.value = '';
+    }
   };
 
   return (
