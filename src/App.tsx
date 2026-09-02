@@ -678,6 +678,9 @@ function App() {
           )}
           {hasMessages && activeTool === 'chat' && (
             <div className="app-header-actions">
+              <button className="btn btn-primary btn-sm" onClick={handleGenerateImage}>
+                <Download size={15} /> 生成图片
+              </button>
               <button className="btn btn-outline btn-sm" onClick={handleCopyImage}>
                 <Copy size={15} /> 复制
               </button>
@@ -713,6 +716,9 @@ function App() {
           <div className="intro-actions">
             <a className="btn btn-primary" href={activeTool === 'chat' ? '#editor' : activeTool === 'moments' ? '#moments-editor' : '#scene-editor'}><Zap size={16} /> 立即开始制作</a>
             {activeTool === 'chat' && <a className="btn btn-outline" href="#templates">浏览对话模板</a>}
+            <button className="btn btn-outline" type="button" onClick={handleShare}>
+              <Share2 size={16} /> 分享工具
+            </button>
           </div>
         </div>
         <div className="intro-trust">
