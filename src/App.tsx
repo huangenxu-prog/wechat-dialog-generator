@@ -1,6 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { toCanvas } from 'html-to-image';
-import { waitForImages } from '@/lib/image-normalize';
 import { CircleDollarSign, Download, Copy, Gift, Image as ImageIcon, MessageSquare, Share2, ShieldCheck, Sparkles, UserRound, UsersRound, Zap } from 'lucide-react';
 import { ImportPanel } from '@/components/ImportPanel';
 import { UserAvatarManager } from '@/components/UserAvatarManager';
@@ -12,6 +11,29 @@ import { ProjectPanel } from '@/components/ProjectPanel';
 import { MomentsEditor } from '@/components/MomentsEditor';
 import { WechatSceneEditor } from '@/components/WechatSceneEditor';
 import { parseChatRecord } from '@/lib/parser';
+
+function waitForImagesReady(node: HTMLElement): Promise<void> {
+  const images = Array.from(node.querySelectorAll('img'));
+  return Promise.all(
+    images.map(async (img) => {
+      try {
+        if (!img.complete || img.naturalWidth === 0) {
+          await new Promise<void>((resolve) => {
+            const done = () => resolve();
+            img.addEventListener('load', done, { once: true });
+            img.addEventListener('error', done, { once: true });
+          });
+        }
+        if (typeof img.decode === 'function') {
+          await img.decode().catch(() => undefined);
+        }
+      } catch {
+        // 单张图片失败不阻断整体导出
+      }
+    }),
+  ).then(() => undefined);
+}
+
 import {
   activeProjectStorageKey,
   copyProject,
@@ -529,10 +551,10 @@ function App() {
       }
     }
 
-    // 等待浏览器重新布局以及所有图片完成加载/解码。
-    // html-to-image 在 iOS Safari 上如果图片尚未完成解码，可能在最终 PNG 中出现空白。
+    // 等待浏览器重新布局
     await new Promise(r => setTimeout(r, 50));
-    await waitForImages(phone);
+    // iOS Safari 下自定义头像可能已经显示，但尚未完成解码；导出前强制等待。
+    await waitForImagesReady(phone);
     const totalH = longshot ? phone.scrollHeight : 2436;
 
     let canvas: HTMLCanvasElement | null = null;
