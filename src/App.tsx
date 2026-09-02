@@ -1,6 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { toCanvas } from 'html-to-image';
-import { waitForImages } from '@/lib/image-normalize';
 import { CircleDollarSign, Download, Copy, Gift, Image as ImageIcon, MessageSquare, Share2, ShieldCheck, Sparkles, UserRound, UsersRound, Zap } from 'lucide-react';
 import { ImportPanel } from '@/components/ImportPanel';
 import { UserAvatarManager } from '@/components/UserAvatarManager';
@@ -48,6 +47,86 @@ const defaultSettings: PhoneSettings = {
   backgroundColor: '#ededed',
   backgroundImage: null,
 };
+
+
+async function waitForImages(node: HTMLElement): Promise<void> {
+  const images = Array.from(node.querySelectorAll<HTMLImageElement>('img'));
+  await Promise.all(
+    images.map(async (img) => {
+      try {
+        if (!img.complete || img.naturalWidth === 0) {
+          await new Promise<void>((resolve) => {
+            const done = () => resolve();
+            img.addEventListener('load', done, { once: true });
+            img.addEventListener('error', done, { once: true });
+          });
+        }
+        if (typeof img.decode === 'function') {
+          await img.decode().catch(() => undefined);
+        }
+      } catch {}
+    })
+  );
+}
+
+async function replaceAvatarImagesWithCanvases(
+  node: HTMLElement
+): Promise<() => void> {
+  const avatarImages = Array.from(
+    node.querySelectorAll<HTMLImageElement>('.wc-face img')
+  );
+
+  const replacements: Array<{
+    img: HTMLImageElement;
+    canvas: HTMLCanvasElement;
+    parent: Node;
+  }> = [];
+
+  for (const img of avatarImages) {
+    try {
+      if (!img.complete || img.naturalWidth === 0) {
+        await new Promise<void>((resolve) => {
+          const done = () => resolve();
+          img.addEventListener('load', done, { once: true });
+          img.addEventListener('error', done, { once: true });
+        });
+      }
+
+      const w = img.naturalWidth;
+      const h = img.naturalHeight;
+      const parent = img.parentNode;
+      if (!w || !h || !parent) continue;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) continue;
+
+      ctx.drawImage(img, 0, 0, w, h);
+
+      const computed = window.getComputedStyle(img);
+      canvas.style.width = computed.width;
+      canvas.style.height = computed.height;
+      canvas.style.objectFit = computed.objectFit;
+      canvas.style.borderRadius = computed.borderRadius;
+      canvas.style.display = computed.display;
+      canvas.className = img.className;
+
+      parent.replaceChild(canvas, img);
+      replacements.push({ img, canvas, parent });
+    } catch {}
+  }
+
+  return () => {
+    for (const { img, canvas, parent } of replacements) {
+      if (canvas.parentNode === parent) {
+        parent.replaceChild(img, canvas);
+      }
+    }
+  };
+}
 
 function App() {
   const [activeTool, setActiveTool] = useState<WechatTool>(() => {
@@ -533,6 +612,8 @@ function App() {
     // html-to-image 在 iOS Safari 上如果图片尚未完成解码，可能在最终 PNG 中出现空白。
     await new Promise(r => setTimeout(r, 50));
     await waitForImages(phone);
+    const restoreAvatarImages = await replaceAvatarImagesWithCanvases(phone);
+    await waitForImages(phone);
     const totalH = longshot ? phone.scrollHeight : 2436;
 
     let canvas: HTMLCanvasElement | null = null;
@@ -544,6 +625,7 @@ function App() {
         backgroundColor: '#ededed',
       });
     } finally {
+      restoreAvatarImages();
       // 还原所有样式
       content.style.transform = saved.ct; content.style.transformOrigin = saved.co;
       wrap.style.width = saved.ww; wrap.style.height = saved.wh;
