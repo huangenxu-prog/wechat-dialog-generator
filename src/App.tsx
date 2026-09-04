@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { toCanvas } from 'html-to-image';
+import html2canvas from 'html2canvas';
 import { CircleDollarSign, Download, Copy, Gift, Image as ImageIcon, MessageSquare, Share2, ShieldCheck, Sparkles, UserRound, UsersRound, Zap } from 'lucide-react';
 import { ImportPanel } from '@/components/ImportPanel';
 import { UserAvatarManager } from '@/components/UserAvatarManager';
@@ -484,7 +484,7 @@ function App() {
     });
   }, []);
 
-  // 用 html-to-image 截图，保持浏览器实际排版，避免 html2canvas 的文字基线偏移
+  // 用 html-to-image 截图（基于浏览器自身渲染，无文字偏移问题）
   const capturePhone = useCallback(async (longshot = false): Promise<HTMLCanvasElement | null> => {
     const phone = phoneRef.current;
     if (!phone) return null;
@@ -524,7 +524,7 @@ function App() {
       scaleWrap.style.height = '2436px';
     }
 
-    // 普通截图：用 margin-top 偏移模拟当前滚动位置（克隆节点不会继承 scrollTop）
+    // 普通截图：用 margin-top 偏移模拟当前滚动位置（html-to-image 克隆会丢失 scrollTop）
     if (!longshot && chatContent && scrollTop > 0) {
       chatContent.style.marginTop = `-${scrollTop}px`;
     }
@@ -550,19 +550,47 @@ function App() {
     }
 
     // 等待浏览器重新布局以及所有图片完成加载/解码。
-    // 在 iOS Safari 上如果图片尚未完成解码，可能在最终 PNG 中出现空白。
+    // html-to-image 在 iOS Safari 上如果图片尚未完成解码，可能在最终 PNG 中出现空白。
     await new Promise(r => setTimeout(r, 50));
     await waitForImages(phone);
     const totalH = longshot ? phone.scrollHeight : 2436;
 
     let canvas: HTMLCanvasElement | null = null;
     try {
-      canvas = await toCanvas(phone, {
+      canvas = await html2canvas(phone, {
         width: 1125,
         height: totalH,
-        pixelRatio: 1,
+        scale: 1,
         backgroundColor: '#ededed',
-        cacheBust: false,
+        useCORS: true,
+        allowTaint: false,
+        imageTimeout: 15000,
+        logging: false,
+        onclone: (clonedDoc) => {
+          // html2canvas 在当前字体/line-height 组合下会把气泡文字的字形
+          // 基线向下偏移。只修改导出的克隆 DOM，不影响页面预览。
+          const clonedPhone = clonedDoc.querySelector('.wc-phone');
+          if (!clonedPhone) return;
+
+          clonedPhone.querySelectorAll<HTMLElement>('.wc-bubble').forEach((bubble) => {
+            if (
+              bubble.classList.contains('wc-bubble-image') ||
+              bubble.classList.contains('wc-bubble-voice') ||
+              bubble.classList.contains('wc-bubble-redpacket') ||
+              bubble.classList.contains('wc-bubble-transfer')
+            ) return;
+
+            const textNode = Array.from(bubble.children).find(
+              (el) => !el.classList.contains('wc-arrow')
+            ) as HTMLElement | undefined;
+            if (!textNode) return;
+
+            // 保留原来的气泡尺寸，只修正文字字形在 html2canvas 中的视觉基线。
+            textNode.style.display = 'block';
+            textNode.style.position = 'relative';
+            textNode.style.top = '-10px';
+          });
+        },
       });
     } finally {
       // 还原所有样式
