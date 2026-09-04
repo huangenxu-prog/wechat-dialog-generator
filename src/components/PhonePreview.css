@@ -395,15 +395,6 @@
   line-height: 1.4;
   min-height: 80px;
 }
-.wc-bubble-text {
-  display: flex;
-  align-items: center;
-  box-sizing: border-box;
-}
-.wc-dialog:not(.wc-dialog-right) .wc-bubble-text {
-  align-self: flex-start;
-}
-
 .wc-arrow {
   content: '';
   background: #fff;
