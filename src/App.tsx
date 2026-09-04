@@ -484,7 +484,7 @@ function App() {
     });
   }, []);
 
-  // 用 html-to-image 截图（基于浏览器自身渲染，无文字偏移问题）
+  // 使用 html2canvas 导出，头像等资源保持原有导出方式
   const capturePhone = useCallback(async (longshot = false): Promise<HTMLCanvasElement | null> => {
     const phone = phoneRef.current;
     if (!phone) return null;
@@ -572,6 +572,16 @@ function App() {
           const clonedPhone = clonedDoc.querySelector('.wc-phone');
           if (!clonedPhone) return;
 
+          // 未读数字在 html2canvas 中也会出现轻微的字体基线偏移；只修正导出克隆，不影响预览。
+          const unreadBadge = clonedPhone.querySelector<HTMLElement>('.wc-nav-badge');
+          if (unreadBadge) {
+            unreadBadge.style.display = 'flex';
+            unreadBadge.style.alignItems = 'center';
+            unreadBadge.style.justifyContent = 'center';
+            unreadBadge.style.lineHeight = '1';
+            unreadBadge.style.transform = 'translateY(-1px)';
+          }
+
           clonedPhone.querySelectorAll<HTMLElement>('.wc-bubble').forEach((bubble) => {
             if (
               bubble.classList.contains('wc-bubble-image') ||
@@ -588,7 +598,7 @@ function App() {
             // 保留原来的气泡尺寸，只修正文字字形在 html2canvas 中的视觉基线。
             textNode.style.display = 'block';
             textNode.style.position = 'relative';
-            textNode.style.top = '-10px';
+            textNode.style.top = '-6px';
           });
         },
       });
