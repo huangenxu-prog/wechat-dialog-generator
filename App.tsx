@@ -484,7 +484,7 @@ function App() {
     });
   }, []);
 
-  // 使用 html2canvas 导出，头像等资源保持原有导出方式
+  // 用 html-to-image 截图（基于浏览器自身渲染，无文字偏移问题）
   const capturePhone = useCallback(async (longshot = false): Promise<HTMLCanvasElement | null> => {
     const phone = phoneRef.current;
     if (!phone) return null;
@@ -566,39 +566,26 @@ function App() {
         allowTaint: false,
         imageTimeout: 15000,
         logging: false,
+        // html2canvas 对中文 inline 文本的字体基线计算会比浏览器实际渲染略偏下。
+        // 只在导出克隆 DOM 中校正文字，不改原预览 DOM，因此头像/气泡布局不会受影响。
         onclone: (clonedDoc) => {
-          // html2canvas 在当前字体/line-height 组合下会把气泡文字的字形
-          // 基线向下偏移。只修改导出的克隆 DOM，不影响页面预览。
-          const clonedPhone = clonedDoc.querySelector('.wc-phone');
-          if (!clonedPhone) return;
+          const textNodes = clonedDoc.querySelectorAll<HTMLElement>(
+            '.wc-bubble:not(.wc-bubble-image):not(.wc-bubble-voice):not(.wc-bubble-redpacket):not(.wc-bubble-transfer) > span:not(.wc-arrow)'
+          );
+          textNodes.forEach((el) => {
+            el.style.display = 'inline-block';
+            el.style.transform = 'translateY(-3px)';
+          });
 
-          // 未读数字在 html2canvas 中也会出现轻微的字体基线偏移；只修正导出克隆，不影响预览。
-          const unreadBadge = clonedPhone.querySelector<HTMLElement>('.wc-nav-badge');
-          if (unreadBadge) {
-            unreadBadge.style.display = 'flex';
-            unreadBadge.style.alignItems = 'center';
-            unreadBadge.style.justifyContent = 'center';
-            unreadBadge.style.lineHeight = '1';
-            unreadBadge.style.transform = 'translateY(0px)';
-          }
-
-          clonedPhone.querySelectorAll<HTMLElement>('.wc-bubble').forEach((bubble) => {
-            if (
-              bubble.classList.contains('wc-bubble-image') ||
-              bubble.classList.contains('wc-bubble-voice') ||
-              bubble.classList.contains('wc-bubble-redpacket') ||
-              bubble.classList.contains('wc-bubble-transfer')
-            ) return;
-
-            const textNode = Array.from(bubble.children).find(
-              (el) => !el.classList.contains('wc-arrow')
-            ) as HTMLElement | undefined;
-            if (!textNode) return;
-
-            // 保留原来的气泡尺寸，只修正文字字形在 html2canvas 中的视觉基线。
-            textNode.style.display = 'block';
-            textNode.style.position = 'relative';
-            textNode.style.top = '-3px';
+          // 未读数字单独处理：圆形底保持原尺寸，只修正数字的行盒/基线。
+          const badges = clonedDoc.querySelectorAll<HTMLElement>('.wc-nav-badge');
+          badges.forEach((el) => {
+            el.style.display = 'flex';
+            el.style.alignItems = 'center';
+            el.style.justifyContent = 'center';
+            el.style.lineHeight = '1';
+            el.style.padding = '0 24px';
+            el.style.transform = 'translateY(1px)';
           });
         },
       });
