@@ -484,7 +484,7 @@ function App() {
     });
   }, []);
 
-  // 使用 html2canvas 导出，头像等资源保持原有导出方式
+  // 用 html-to-image 截图（基于浏览器自身渲染，无文字偏移问题）
   const capturePhone = useCallback(async (longshot = false): Promise<HTMLCanvasElement | null> => {
     const phone = phoneRef.current;
     if (!phone) return null;
@@ -567,39 +567,21 @@ function App() {
         imageTimeout: 15000,
         logging: false,
         onclone: (clonedDoc) => {
-          // html2canvas 在当前字体/line-height 组合下会把气泡文字的字形
-          // 基线向下偏移。只修改导出的克隆 DOM，不影响页面预览。
-          const clonedPhone = clonedDoc.querySelector('.wc-phone');
-          if (!clonedPhone) return;
+          // html2canvas 在导出时中文字形基线会比浏览器预览略低，
+          // 只调整导出副本中的文字，不影响预览，也不影响头像。
+          const bubbleTexts = clonedDoc.querySelectorAll<HTMLElement>(
+            '.wc-bubble > span:not(.wc-arrow)'
+          );
+          bubbleTexts.forEach((el) => {
+            el.style.display = 'inline-block';
+            el.style.transform = 'translateY(-5px)';
+          });
 
-          // 未读数字在 html2canvas 中也会出现轻微的字体基线偏移；只修正导出克隆，不影响预览。
-          const unreadBadge = clonedPhone.querySelector<HTMLElement>('.wc-nav-badge');
+          // 左上角未读数字保持自己的位置，只做 1px 的基线修正。
+          const unreadBadge = clonedDoc.querySelector<HTMLElement>('.wc-nav-badge');
           if (unreadBadge) {
-            unreadBadge.style.display = 'flex';
-            unreadBadge.style.alignItems = 'center';
-            unreadBadge.style.justifyContent = 'center';
-            unreadBadge.style.lineHeight = '1';
             unreadBadge.style.transform = 'translateY(-1px)';
           }
-
-          clonedPhone.querySelectorAll<HTMLElement>('.wc-bubble').forEach((bubble) => {
-            if (
-              bubble.classList.contains('wc-bubble-image') ||
-              bubble.classList.contains('wc-bubble-voice') ||
-              bubble.classList.contains('wc-bubble-redpacket') ||
-              bubble.classList.contains('wc-bubble-transfer')
-            ) return;
-
-            const textNode = Array.from(bubble.children).find(
-              (el) => !el.classList.contains('wc-arrow')
-            ) as HTMLElement | undefined;
-            if (!textNode) return;
-
-            // 保留原来的气泡尺寸，只修正文字字形在 html2canvas 中的视觉基线。
-            textNode.style.display = 'block';
-            textNode.style.position = 'relative';
-            textNode.style.top = '-6px';
-          });
         },
       });
     } finally {
