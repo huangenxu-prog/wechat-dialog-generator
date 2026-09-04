@@ -58,7 +58,7 @@ function ChatBubble({ msg, user, userIndex, isSelf, isGroup, selfColor, otherCol
     switch (msg.type) {
       case 'text':
         return (
-          <div className="wc-bubble" style={{ background: bubbleColor }}>
+          <div className="wc-bubble wc-bubble-text" style={{ background: bubbleColor }}>
             <span className="wc-arrow" style={{ background: bubbleColor }} />
             <span dangerouslySetInnerHTML={{ __html: escHtml(msg.content).replace(/\n/g, '<br>') }} />
           </div>
