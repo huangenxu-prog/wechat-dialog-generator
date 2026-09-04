@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import html2canvas from 'html2canvas';
+import { toCanvas } from 'html-to-image';
 import { CircleDollarSign, Download, Copy, Gift, Image as ImageIcon, MessageSquare, Share2, ShieldCheck, Sparkles, UserRound, UsersRound, Zap } from 'lucide-react';
 import { ImportPanel } from '@/components/ImportPanel';
 import { UserAvatarManager } from '@/components/UserAvatarManager';
@@ -484,7 +484,7 @@ function App() {
     });
   }, []);
 
-  // 用 html-to-image 截图（基于浏览器自身渲染，无文字偏移问题）
+  // 用 html-to-image 截图，保持浏览器实际排版，避免 html2canvas 的文字基线偏移
   const capturePhone = useCallback(async (longshot = false): Promise<HTMLCanvasElement | null> => {
     const phone = phoneRef.current;
     if (!phone) return null;
@@ -524,7 +524,7 @@ function App() {
       scaleWrap.style.height = '2436px';
     }
 
-    // 普通截图：用 margin-top 偏移模拟当前滚动位置（html-to-image 克隆会丢失 scrollTop）
+    // 普通截图：用 margin-top 偏移模拟当前滚动位置（克隆节点不会继承 scrollTop）
     if (!longshot && chatContent && scrollTop > 0) {
       chatContent.style.marginTop = `-${scrollTop}px`;
     }
@@ -550,22 +550,19 @@ function App() {
     }
 
     // 等待浏览器重新布局以及所有图片完成加载/解码。
-    // html-to-image 在 iOS Safari 上如果图片尚未完成解码，可能在最终 PNG 中出现空白。
+    // 在 iOS Safari 上如果图片尚未完成解码，可能在最终 PNG 中出现空白。
     await new Promise(r => setTimeout(r, 50));
     await waitForImages(phone);
     const totalH = longshot ? phone.scrollHeight : 2436;
 
     let canvas: HTMLCanvasElement | null = null;
     try {
-      canvas = await html2canvas(phone, {
+      canvas = await toCanvas(phone, {
         width: 1125,
         height: totalH,
-        scale: 1,
+        pixelRatio: 1,
         backgroundColor: '#ededed',
-        useCORS: true,
-        allowTaint: false,
-        imageTimeout: 15000,
-        logging: false,
+        cacheBust: false,
       });
     } finally {
       // 还原所有样式
