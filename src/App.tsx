@@ -573,8 +573,12 @@ function App() {
             '.wc-bubble:not(.wc-bubble-image):not(.wc-bubble-voice):not(.wc-bubble-redpacket):not(.wc-bubble-transfer) > span:not(.wc-arrow)'
           );
           textNodes.forEach((el) => {
+            // 使用 relative + top，而不是 transform。
+            // html2canvas 对 transform 作用在中文 inline/inline-block 文本上的基线处理不稳定，
+            // 导致调整数值变化很小甚至肉眼看不出；top 会直接改变导出克隆中的文字位置。
             el.style.display = 'inline-block';
-            el.style.transform = 'translateY(-6px)';
+            el.style.position = 'relative';
+            el.style.top = '-12px';
           });
 
           // 未读数字单独处理：圆形底保持原尺寸，只修正数字的行盒/基线。
