@@ -578,18 +578,30 @@ function App() {
             // 导致调整数值变化很小甚至肉眼看不出；top 会直接改变导出克隆中的文字位置。
             el.style.display = 'inline-block';
             el.style.position = 'relative';
-            el.style.top = '-12px';
+            el.style.top = '-14px';
           });
 
           // 未读数字单独处理：圆形底保持原尺寸，只修正数字的行盒/基线。
           const badges = clonedDoc.querySelectorAll<HTMLElement>('.wc-nav-badge');
           badges.forEach((el) => {
+            // 保持圆形未读徽标本身的位置不变，只调整里面的数字。
+            // 直接移动 badge 会连圆形背景一起移动，因此这里把数字单独包起来。
             el.style.display = 'flex';
             el.style.alignItems = 'center';
             el.style.justifyContent = 'center';
             el.style.lineHeight = '1';
             el.style.padding = '0 24px';
-            el.style.transform = 'translateY(1px)';
+            el.style.transform = 'none';
+
+            const value = el.textContent ?? '';
+            const number = clonedDoc.createElement('span');
+            number.textContent = value;
+            number.style.display = 'inline-block';
+            number.style.position = 'relative';
+            number.style.top = '-2px';
+            number.style.lineHeight = '1';
+            el.textContent = '';
+            el.appendChild(number);
           });
         },
       });
