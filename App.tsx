@@ -578,7 +578,7 @@ function App() {
             // 导致调整数值变化很小甚至肉眼看不出；top 会直接改变导出克隆中的文字位置。
             el.style.display = 'inline-block';
             el.style.position = 'relative';
-            el.style.top = '-6px';
+            el.style.top = '-12px';
           });
 
           // 未读数字单独处理：圆形底保持原尺寸，只修正数字的行盒/基线。
