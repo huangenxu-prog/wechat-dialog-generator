@@ -578,7 +578,7 @@ function App() {
             // 导致调整数值变化很小甚至肉眼看不出；top 会直接改变导出克隆中的文字位置。
             el.style.display = 'inline-block';
             el.style.position = 'relative';
-            el.style.top = '-14px';
+            el.style.top = '-15px';
           });
 
           // 未读数字单独处理：圆形底保持原尺寸，只修正数字的行盒/基线。
@@ -590,7 +590,12 @@ function App() {
             el.style.alignItems = 'center';
             el.style.justifyContent = 'center';
             el.style.lineHeight = '1';
-            el.style.padding = '0 24px';
+            el.style.padding = '0';
+            el.style.width = '80px';
+            el.style.minWidth = '80px';
+            el.style.height = '80px';
+            el.style.borderRadius = '40px';
+            el.style.marginTop = '-40px';
             el.style.transform = 'none';
 
             const value = el.textContent ?? '';
