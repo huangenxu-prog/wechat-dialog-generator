@@ -591,11 +591,11 @@ function App() {
             el.style.justifyContent = 'center';
             el.style.lineHeight = '1';
             el.style.padding = '0';
-            el.style.width = '80px';
-            el.style.minWidth = '80px';
-            el.style.height = '80px';
-            el.style.borderRadius = '40px';
-            el.style.marginTop = '-40px';
+            el.style.width = '88px';
+            el.style.minWidth = '88px';
+            el.style.height = '88px';
+            el.style.borderRadius = '44px';
+            el.style.marginTop = '-44px';
             el.style.transform = 'none';
 
             const value = el.textContent ?? '';
