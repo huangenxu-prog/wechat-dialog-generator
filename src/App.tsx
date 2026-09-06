@@ -603,7 +603,7 @@ function App() {
             number.textContent = value;
             number.style.display = 'inline-block';
             number.style.position = 'relative';
-            number.style.top = '-2px';
+            number.style.top = '-5px';
             number.style.lineHeight = '1';
             el.textContent = '';
             el.appendChild(number);
