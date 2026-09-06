@@ -566,22 +566,27 @@ function App() {
         allowTaint: false,
         imageTimeout: 15000,
         logging: false,
+        // html2canvas 对中文 inline 文本的字体基线计算会比浏览器实际渲染略偏下。
+        // 只在导出克隆 DOM 中校正文字，不改原预览 DOM，因此头像/气泡布局不会受影响。
         onclone: (clonedDoc) => {
-          // html2canvas 在导出时中文字形基线会比浏览器预览略低，
-          // 只调整导出副本中的文字，不影响预览，也不影响头像。
-          const bubbleTexts = clonedDoc.querySelectorAll<HTMLElement>(
-            '.wc-bubble > span:not(.wc-arrow)'
+          const textNodes = clonedDoc.querySelectorAll<HTMLElement>(
+            '.wc-bubble:not(.wc-bubble-image):not(.wc-bubble-voice):not(.wc-bubble-redpacket):not(.wc-bubble-transfer) > span:not(.wc-arrow)'
           );
-          bubbleTexts.forEach((el) => {
+          textNodes.forEach((el) => {
             el.style.display = 'inline-block';
-            el.style.transform = 'translateY(-5px)';
+            el.style.transform = 'translateY(-6px)';
           });
 
-          // 左上角未读数字保持自己的位置，只做 1px 的基线修正。
-          const unreadBadge = clonedDoc.querySelector<HTMLElement>('.wc-nav-badge');
-          if (unreadBadge) {
-            unreadBadge.style.transform = 'translateY(-1px)';
-          }
+          // 未读数字单独处理：圆形底保持原尺寸，只修正数字的行盒/基线。
+          const badges = clonedDoc.querySelectorAll<HTMLElement>('.wc-nav-badge');
+          badges.forEach((el) => {
+            el.style.display = 'flex';
+            el.style.alignItems = 'center';
+            el.style.justifyContent = 'center';
+            el.style.lineHeight = '1';
+            el.style.padding = '0 24px';
+            el.style.transform = 'translateY(1px)';
+          });
         },
       });
     } finally {
